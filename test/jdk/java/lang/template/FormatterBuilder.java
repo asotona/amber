@@ -34,6 +34,7 @@ import java.util.*;
 
 public class FormatterBuilder {
     public static void main(String... args) {
+        Locale.setDefault(Locale.US);
         suite(FMT);
         Locale thai = Locale.forLanguageTag("th-TH-u-nu-thai");
         FormatProcessor thaiFormat = new FormatProcessor(thai);
