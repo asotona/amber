@@ -77,7 +77,7 @@ import jdk.internal.javac.PreviewFeature;
  * }
  * {@code result} will be equivalent to <code>"10 + 20 = 30"</code>.
  * <p>
- * The {@link StringTemplate#process} method supplies an alternative to using
+ * The {@link StringTemplate#process(TemplateProcessor)} method supplies an alternative to using
  * string template expressions.
  * {@snippet :
  * String result = "\{x} + \{y} = \{x + y}".process(STR);
@@ -298,21 +298,5 @@ public interface StringTemplate {
      * @implNote The result of interpolation is not interned.
      */
     public static final StringProcessor STR = st -> st.interpolate();
-
-    /**
-     * This predefined FormatProcessor instance constructs a String result using {@link
-     * Formatter}. Unlike {@link Formatter}, FormatProcessor uses the value from
-     * the embedded expression that follows immediately after the
-     * <a href="../../util/Formatter.html#syntax">format specifier</a>.
-     * StringTemplate expressions without a preceeding specifier, use "%s" by
-
-     * Example: {@snippet :
-     * int x = 123;
-     * int y = 987;
-     * String result = FMT."%3d\{x} + %3d\{y} = %4d\{x + y}"; // @highlight substring="FMT"
-     * }
-     * {@link FMT} uses the Locale.US {@link Locale}.
-     */
-    public static final FormatProcessor FMT = new FormatProcessor(Locale.US);
 
 }
