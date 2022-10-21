@@ -2658,10 +2658,7 @@ public class JavacParser implements Parser {
         case FINAL: {
             dc = token.comment(CommentStyle.JAVADOC);
             JCModifiers mods = modifiersOpt();
-            if (token.kind == INTERFACE ||
-                token.kind == CLASS ||
-                token.kind == ENUM ||
-                isRecordStart()) {
+            if (isDeclaration()) {
                 return List.of(classOrRecordOrInterfaceOrEnumDeclaration(mods, dc));
             } else {
                 JCExpression t = parseType(true);
@@ -3853,7 +3850,14 @@ public class JavacParser implements Parser {
                         reportSyntaxError(token.pos, Errors.ExpectedModule);
                     }
                 }
-                JCTree def = typeDeclaration(mods, docComment);
+                JCTree def;
+                if (!isDeclaration() && token.kind != SEMI) {
+                    int pos = token.pos;
+                    List<JCTree> frees = classOrInterfaceOrRecordBodyDeclaration(mods, names.empty, false, false);
+                    def = frees.nonEmpty() ? frees.head : toP(F.at(pos).Skip());
+                } else {
+                    def = typeDeclaration(mods, docComment);
+                }
                 if (def instanceof JCExpressionStatement statement)
                     def = statement.expr;
                 defs.append(def);
@@ -3863,7 +3867,8 @@ public class JavacParser implements Parser {
                 firstTypeDecl = false;
             }
         }
-        JCTree.JCCompilationUnit toplevel = F.at(firstToken.pos).TopLevel(defs.toList());
+        JCTree.JCCompilationUnit toplevel;
+        toplevel = F.at(firstToken.pos).TopLevel(defs.toList());
         if (!consumedToplevelDoc)
             attach(toplevel, firstToken.comment(CommentStyle.JAVADOC));
         if (defs.isEmpty())
@@ -4268,8 +4273,7 @@ public class JavacParser implements Parser {
                     hasStructuralErrors = true;
                 }
                 wasError = false;
-                defs.appendList(classOrInterfaceOrRecordBodyDeclaration(enumName,
-                                                                false, false));
+                defs.appendList(classOrInterfaceOrRecordBodyDeclaration(null, enumName, false, false));
                 if (token.pos <= endPosTable.errorEndPos) {
                     // error recovery
                    skip(false, true, true, false);
@@ -4372,7 +4376,7 @@ public class JavacParser implements Parser {
         }
         ListBuffer<JCTree> defs = new ListBuffer<>();
         while (token.kind != RBRACE && token.kind != EOF) {
-            defs.appendList(classOrInterfaceOrRecordBodyDeclaration(className, isInterface, isRecord));
+            defs.appendList(classOrInterfaceOrRecordBodyDeclaration(null, className, isInterface, isRecord));
             if (token.pos <= endPosTable.errorEndPos) {
                // error recovery
                skip(false, true, true, false);
@@ -4411,18 +4415,17 @@ public class JavacParser implements Parser {
      *      )
      *
      */
-    protected List<JCTree> classOrInterfaceOrRecordBodyDeclaration(Name className, boolean isInterface, boolean isRecord) {
+    protected List<JCTree> classOrInterfaceOrRecordBodyDeclaration(JCModifiers mods, Name className,
+                                                                   boolean isInterface,
+                                                                   boolean isRecord) {
         if (token.kind == SEMI) {
             nextToken();
             return List.nil();
         } else {
             Comment dc = token.comment(CommentStyle.JAVADOC);
             int pos = token.pos;
-            JCModifiers mods = modifiersOpt();
-            if (token.kind == CLASS ||
-                allowRecords && isRecordStart() ||
-                token.kind == INTERFACE ||
-                token.kind == ENUM) {
+            mods = modifiersOpt(mods);
+            if (isDeclaration()) {
                 return List.of(classOrRecordOrInterfaceOrEnumDeclaration(mods, dc));
             } else if (token.kind == LBRACE &&
                        (mods.flags & Flags.StandardFlags & ~Flags.STATIC) == 0 &&
@@ -4524,6 +4527,13 @@ public class JavacParser implements Parser {
             }
         }
     }
+
+    protected boolean isDeclaration() {
+        return token.kind == CLASS ||
+               token.kind == INTERFACE ||
+               token.kind == ENUM ||
+               isRecordStart() && allowRecords;
+        }
 
     protected boolean isRecordStart() {
         if (token.kind == IDENTIFIER && token.name() == names.record && peekToken(TokenKind.IDENTIFIER)) {
