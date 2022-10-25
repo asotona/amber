@@ -133,7 +133,7 @@ public class Main {
         } catch (Fault f) {
             System.err.println(f.getMessage());
             System.exit(1);
-        } catch (InvocationTargetException e) {
+        } catch (InvocationTargetException | InstantiationException e) {
             // leave VM to handle the stacktrace, in the standard manner
             throw e.getCause();
         }
@@ -195,7 +195,8 @@ public class Main {
      * @throws Fault if a problem is detected before the main method can be executed
      * @throws InvocationTargetException if the main method throws an exception
      */
-    public void run(String[] runtimeArgs, String[] args) throws Fault, InvocationTargetException {
+    public void run(String[] runtimeArgs, String[] args) throws Fault, InvocationTargetException,
+            InstantiationException {
         Path file = getFile(args);
 
         Context context = new Context(file.toAbsolutePath());
@@ -418,28 +419,43 @@ public class Main {
      * @throws InvocationTargetException if the {@code main} method throws an exception
      */
     private void execute(String mainClassName, String[] appArgs, Context context)
-            throws Fault, InvocationTargetException {
+            throws Fault, InvocationTargetException, InstantiationException {
         System.setProperty("jdk.launcher.sourcefile", context.file.toString());
         ClassLoader cl = context.getClassLoader(ClassLoader.getSystemClassLoader());
         try {
             Class<?> appClass = Class.forName(mainClassName, true, cl);
-            Method main = appClass.getDeclaredMethod("main", String[].class);
-            int PUBLIC_STATIC = Modifier.PUBLIC | Modifier.STATIC;
-            if ((main.getModifiers() & PUBLIC_STATIC) != PUBLIC_STATIC) {
-                throw new Fault(Errors.MainNotPublicStatic);
+            Method main = null;
+            try {
+                main = appClass.getDeclaredMethod("main", String[].class);
+            } catch (NoSuchMethodException ex) {
+                main = appClass.getDeclaredMethod("main");
             }
             if (!main.getReturnType().equals(void.class)) {
                 throw new Fault(Errors.MainNotVoid);
             }
             main.setAccessible(true);
-            main.invoke(0, (Object) appArgs);
+            if ((main.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
+                if (main.getParameterCount() == 0) {
+                    main.invoke(0);
+                } else {
+                    main.invoke(0, (Object) appArgs);
+                }
+            } else {
+                var con = appClass.getDeclaredConstructor();
+                con.setAccessible(true);
+                if (main.getParameterCount() == 0) {
+                    main.invoke(con.newInstance());
+                } else {
+                    main.invoke(con.newInstance(), (Object) appArgs);
+                }
+            }
         } catch (ClassNotFoundException e) {
             throw new Fault(Errors.CantFindClass(mainClassName));
         } catch (NoSuchMethodException e) {
             throw new Fault(Errors.CantFindMainMethod(mainClassName));
         } catch (IllegalAccessException e) {
             throw new Fault(Errors.CantAccessMainMethod(mainClassName));
-        } catch (InvocationTargetException e) {
+        } catch (InvocationTargetException | InstantiationException e) {
             // remove stack frames for source launcher
             int invocationFrames = e.getStackTrace().length;
             Throwable target = e.getCause();

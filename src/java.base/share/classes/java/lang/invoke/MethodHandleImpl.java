@@ -1649,6 +1649,15 @@ abstract class MethodHandleImpl {
             }
 
             @Override
+            public MethodHandle findConstructor(Class<?> defc, MethodType type) throws IllegalAccessException {
+                try {
+                    return IMPL_LOOKUP.findConstructor(defc, type);
+                } catch (NoSuchMethodException e) {
+                    return null;
+                }
+            }
+
+            @Override
             public MethodHandle reflectiveInvoker(Class<?> caller) {
                 Objects.requireNonNull(caller);
                 return BindCaller.reflectiveInvoker(caller);
