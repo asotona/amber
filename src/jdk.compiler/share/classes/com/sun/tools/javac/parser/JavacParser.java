@@ -188,6 +188,7 @@ public class JavacParser implements Parser {
         this.allowYieldStatement = Feature.SWITCH_EXPRESSION.allowedInSource(source);
         this.allowRecords = Feature.RECORDS.allowedInSource(source);
         this.allowSealedTypes = Feature.SEALED_CLASSES.allowedInSource(source);
+        this.allowImplicitClass = Feature.IMPLICIT_CLASS_IN_DEFAULT_PACKAGE.allowedInSource(source);
     }
 
     protected AbstractEndPosTable newEndPosTable(boolean keepEndPositions) {
@@ -228,6 +229,10 @@ public class JavacParser implements Parser {
     /** Switch: are sealed types allowed in this source level?
      */
     boolean allowSealedTypes;
+
+    /** Switch: is implicit class allowed?
+     */
+    boolean allowImplicitClass;
 
     /** The type of the method receiver, as specified by a first "this" parameter.
      */
@@ -3748,7 +3753,7 @@ public class JavacParser implements Parser {
                         reportSyntaxError(token.pos, Errors.ExpectedModule);
                     }
                 }
-                JCTree def = typeDeclaration(mods, docComment);
+                JCTree def = typeDeclaration(mods, docComment, seenPackage);
                 if (def instanceof JCExpressionStatement statement)
                     def = statement.expr;
                 defs.append(def);
@@ -3898,13 +3903,13 @@ public class JavacParser implements Parser {
     /** TypeDeclaration = ClassOrInterfaceOrEnumDeclaration
      *                  | ";"
      */
-    JCTree typeDeclaration(JCModifiers mods, Comment docComment) {
+    JCTree typeDeclaration(JCModifiers mods, Comment docComment, boolean seenPackage) {
         int pos = token.pos;
         if (mods == null && token.kind == SEMI) {
             nextToken();
             return toP(F.at(pos).Skip());
         } else {
-            return classOrRecordOrInterfaceOrEnumDeclaration(modifiersOpt(mods), docComment);
+            return classOrRecordOrInterfaceOrEnumDeclarationOrImplicitClass(modifiersOpt(mods), docComment, seenPackage);
         }
     }
 
@@ -3914,6 +3919,10 @@ public class JavacParser implements Parser {
      *  @param dc       The documentation comment for the class, or null.
      */
     protected JCStatement classOrRecordOrInterfaceOrEnumDeclaration(JCModifiers mods, Comment dc) {
+        return classOrRecordOrInterfaceOrEnumDeclarationOrImplicitClass(mods, dc, false);
+    }
+
+    protected JCStatement classOrRecordOrInterfaceOrEnumDeclarationOrImplicitClass(JCModifiers mods, Comment dc, boolean seenPackage) {
         if (token.kind == CLASS) {
             return classDeclaration(mods, dc);
         } if (isRecordStart()) {
@@ -3922,6 +3931,8 @@ public class JavacParser implements Parser {
             return interfaceDeclaration(mods, dc);
         } else if (token.kind == ENUM) {
             return enumDeclaration(mods, dc);
+        } else if (!seenPackage && !parseModuleInfo && allowImplicitClass) {
+            return implicitClass(mods, dc);
         } else {
             int pos = token.pos;
             List<JCTree> errs;
@@ -3977,6 +3988,23 @@ public class JavacParser implements Parser {
         List<JCTree> defs = classInterfaceOrRecordBody(name, false, false);
         JCClassDecl result = toP(F.at(pos).ClassDef(
             mods, name, typarams, extending, implementing, permitting, defs));
+        attach(result, dc);
+        return result;
+    }
+
+    protected JCClassDecl implicitClass(JCModifiers mods, Comment dc) {
+        int pos = token.pos;
+        Name name = names.CLASS;
+        ListBuffer<JCTree> defs = new ListBuffer<>();
+        while (token.kind != EOF) {
+            defs.appendList(classOrInterfaceOrRecordBodyDeclaration(name, false, false));
+            if (token.pos <= endPosTable.errorEndPos) {
+               // error recovery
+               skip(false, true, true, false);
+           }
+        }
+        JCClassDecl result = toP(F.at(pos).ClassDef(
+            mods, name, List.nil(), null, List.nil(), List.nil(), defs.toList()));
         attach(result, dc);
         return result;
     }
