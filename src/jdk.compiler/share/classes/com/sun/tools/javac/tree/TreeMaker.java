@@ -1143,6 +1143,13 @@ public class TreeMaker implements JCTree.Factory {
                   s == sym &&
                   !it.hasNext();
             }
+            it = toplevel.autoImportScope.getSymbolsByName(sym.name).iterator();
+            if (it.hasNext()) {
+                Symbol s = it.next();
+                return
+                  s == sym &&
+                  !it.hasNext();
+            }
         }
         return false;
     }

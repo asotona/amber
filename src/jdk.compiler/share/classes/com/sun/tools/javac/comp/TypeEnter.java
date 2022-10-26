@@ -222,6 +222,7 @@ public class TypeEnter implements Completer {
             chk.checkImportedPackagesObservable(toplevel);
             toplevel.namedImportScope.finalizeScope();
             toplevel.starImportScope.finalizeScope();
+            toplevel.autoImportScope.finalizeScope();
         } catch (CompletionFailure cf) {
             chk.completionError(toplevel.pos(), cf);
         } finally {
@@ -347,13 +348,21 @@ public class TypeEnter implements Completer {
                         (origin, sym) -> sym.kind == TYP &&
                                          chk.importAccessible(sym, packge);
 
-                // Import-on-demand java.lang.
-                PackageSymbol javaLang = syms.enterPackage(syms.java_base, names.java_lang);
-                if (javaLang.members().isEmpty() && !javaLang.exists()) {
-                    log.error(Errors.NoJavaLang);
-                    throw new Abort();
+                if (!env.toplevel.autoImportScope.isFilled()) {
+                    // Import-on-demand java.lang.
+                    PackageSymbol javaLang = syms.enterPackage(syms.java_base, names.java_lang);
+                    if (javaLang.members().isEmpty() && !javaLang.exists()) {
+                        log.error(Errors.NoJavaLang);
+                        throw new Abort();
+                    }
+                    env.toplevel.autoImportScope.importAll(types, javaLang.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(javaLang), false), cfHandler);
+
+                    // Import-on-demand java.lang.ImportStatic.
+                    ClassSymbol importStatic = syms.getClass(syms.java_base, names.java_lang_ImportStatic);
+                    if (importStatic != null && !importStatic.members().isEmpty()) {
+                        env.toplevel.autoImportScope.importAll(types, importStatic.members(), staticImportFilter, make.at(tree.pos()).Import(make.QualIdent(importStatic), true), cfHandler);
+                    }
                 }
-                importAll(make.at(tree.pos()).Import(make.QualIdent(javaLang), false), javaLang, env);
 
                 JCModuleDecl decl = tree.getModuleDecl();
 
