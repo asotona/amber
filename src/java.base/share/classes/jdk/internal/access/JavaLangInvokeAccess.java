@@ -157,11 +157,6 @@ public interface JavaLangInvokeAccess {
     MethodHandle findStatic(Class<?> defc, String name, MethodType type) throws IllegalAccessException;
 
     /**
-     * Produces a method handle of a constructor with the trusted lookup.
-     */
-    MethodHandle findConstructor(Class<?> defc, MethodType type) throws IllegalAccessException;
-
-    /**
      * Returns a method handle of an invoker class injected for core reflection
      * implementation with the following signature:
      *     reflect_invoke_V(MethodHandle mh, Object target, Object[] args)

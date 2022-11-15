@@ -38,6 +38,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
@@ -408,6 +409,26 @@ public class Main {
         return mainClassName;
     }
 
+    private static Method findMainMethod(Class<?> appClass) {
+        try {
+            Method findMainMethod = VM.class.getDeclaredMethod("findMainMethod", Class.class);
+            return (Method)findMainMethod.invoke(VM.class, appClass);
+        } catch (Throwable ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static void setIOArgs(String[] args) {
+        try {
+            Class<?> ioClass = Class.forName("java.lang.IO");
+            if (ioClass != null) {
+                ioClass.getDeclaredField("ARGS").set(ioClass, (Object) args);
+            }
+        } catch (ReflectiveOperationException ex) {
+            // Bootstrapping may cause IO to not be found.
+        }
+    }
+
     /**
      * Invokes the {@code main} method of a specified class, using a class loader that
      * will load recently compiled classes from memory.
@@ -424,38 +445,36 @@ public class Main {
         ClassLoader cl = context.getClassLoader(ClassLoader.getSystemClassLoader());
         try {
             Class<?> appClass = Class.forName(mainClassName, true, cl);
-            Method main = null;
-            try {
-                main = appClass.getDeclaredMethod("main", String[].class);
-            } catch (NoSuchMethodException ex) {
-                main = appClass.getDeclaredMethod("main");
-            }
-            if (!main.getReturnType().equals(void.class)) {
-                throw new Fault(Errors.MainNotVoid);
+            Method main = findMainMethod(appClass);
+            if (main == null) {
+                throw new Fault(Errors.CantFindMainMethod(mainClassName));
             }
             main.setAccessible(true);
-            if ((main.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
+            setIOArgs(appArgs);
+            int mods = main.getModifiers();
+            if ((mods & Modifier.STATIC) != 0) {
                 if (main.getParameterCount() == 0) {
-                    main.invoke(0);
+                    main.invoke(appClass);
                 } else {
-                    main.invoke(0, (Object) appArgs);
+                    main.invoke(appClass, (Object)appArgs);
                 }
             } else {
-                var con = appClass.getDeclaredConstructor();
-                con.setAccessible(true);
-                if (main.getParameterCount() == 0) {
-                    main.invoke(con.newInstance());
+                Constructor<?> constructor = appClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                Object instance = constructor.newInstance();
+                 if (main.getParameterCount() == 0) {
+                    main.invoke(instance);
                 } else {
-                    main.invoke(con.newInstance(), (Object) appArgs);
+                    main.invoke(instance, (Object)appArgs);
                 }
             }
         } catch (ClassNotFoundException e) {
             throw new Fault(Errors.CantFindClass(mainClassName));
         } catch (NoSuchMethodException e) {
             throw new Fault(Errors.CantFindMainMethod(mainClassName));
-        } catch (IllegalAccessException e) {
+        } catch (IllegalAccessException | InstantiationException e) {
             throw new Fault(Errors.CantAccessMainMethod(mainClassName));
-        } catch (InvocationTargetException | InstantiationException e) {
+        } catch (InvocationTargetException e) {
             // remove stack frames for source launcher
             int invocationFrames = e.getStackTrace().length;
             Throwable target = e.getCause();

@@ -357,8 +357,8 @@ public class TypeEnter implements Completer {
                     }
                     env.toplevel.autoImportScope.importAll(types, javaLang.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(javaLang), false), cfHandler);
 
-                    // Import-on-demand java.lang.ImportStatic.
-                    ClassSymbol importStatic = syms.getClass(syms.java_base, names.java_lang_ImportStatic);
+                    // Import-on-demand java.lang.IO
+                    ClassSymbol importStatic = syms.getClass(syms.java_base, names.java_lang_IO);
                     if (importStatic != null && !importStatic.members().isEmpty()) {
                         env.toplevel.autoImportScope.importAll(types, importStatic.members(), staticImportFilter, make.at(tree.pos()).Import(make.QualIdent(importStatic), true), cfHandler);
                     }

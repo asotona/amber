@@ -39,7 +39,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
@@ -50,8 +52,8 @@ import java.lang.module.ModuleDescriptor.Requires;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -80,7 +82,6 @@ import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import jdk.internal.access.SharedSecrets;
 
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModuleBootstrap;
@@ -130,7 +131,6 @@ public final class LauncherHelper {
     }
     private static PrintStream ostream;
     private static Class<?> appClass; // application class, for GUI/reporting purposes
-    private static MethodHandle mainMethod;
 
     /*
      * A method called by the launcher to print out the standard settings,
@@ -706,12 +706,9 @@ public final class LauncherHelper {
             // Will abort() if there are problems with FX runtime
             FXHelper.setFXLaunchParameters(what, mode);
             mainClass = FXHelper.class;
-        } else {
-            validateMainClass(mainClass);
-            mainClass = MainHelper.class;
         }
 
-
+        validateMainClass(mainClass);
         return mainClass;
     }
 
@@ -848,65 +845,63 @@ public final class LauncherHelper {
         return false;
     }
 
-    private static MethodHandle findMainMethod(Class<?> c) throws IllegalAccessException, NoSuchMethodException {
-        var lookup = SharedSecrets.getJavaLangInvokeAccess();
-        MethodHandle mh = null;
-        try {
-            mh = lookup.findStatic(c, "main", MethodType.methodType(void.class, String[].class));
-        } catch (IllegalAccessException iae) {}
-        if (mh != null) return mh;
-        try {
-            mh = lookup.findStatic(c, "main", MethodType.methodType(void.class));
-        } catch (IllegalAccessException iae) {}
-        if (mh != null) return MethodHandles.dropArguments(mh, 0, String[].class);
-        var con = lookup.findConstructor(c, MethodType.methodType(void.class));
-        if (con != null) {
-            try {
-                mh = lookup.findVirtual(c, "main", MethodType.methodType(void.class, String[].class));
-            } catch (IllegalAccessException iae) {}
-            if (mh != null) return MethodHandles.foldArguments(mh, con);
-            try {
-                mh = lookup.findVirtual(c, "main", MethodType.methodType(void.class));
-            } catch (IllegalAccessException iae) {}
-            if (mh != null) return MethodHandles.dropArguments(MethodHandles.foldArguments(mh, con), 0, String[].class);
-        }
-        throw new NoSuchMethodException("missing main");
+    /*
+     * main type flags
+     */
+    private static final int MAIN_WITHOUT_ARGS = 1;
+    private static final int MAIN_NONSTATIC = 2;
+    private static int mainType = 0;
+
+    /*
+     * Return type so that launcher invokes the correct main
+     */
+    public static int getMainType() {
+        return mainType;
     }
 
     // Check the existence and signature of main and abort if incorrect
     static void validateMainClass(Class<?> mainClass) {
-//        Method mainMethod = null;
         try {
-            mainMethod = findMainMethod(mainClass);
-        } catch (NoSuchMethodException nsme) {
-            // invalid main or not FX application, abort with an error
-            abort(null, "java.launcher.cls.error4", mainClass.getName(),
-                  JAVAFX_APPLICATION_CLASS_NAME);
-        } catch (Throwable e) {
+            Method mainMethod = VM.findMainMethod(mainClass);
+            if (mainMethod == null) {
+                // invalid main or not FX application, abort with an error
+                abort(null, "java.launcher.cls.error4", mainClass.getName(),
+                        JAVAFX_APPLICATION_CLASS_NAME);
+            }
+            int mod = mainMethod.getModifiers();
+            boolean isPublic = Modifier.isStatic(mod);
+            boolean isStatic = Modifier.isStatic(mod);
+            if (isStatic && !isPublic && mainClass.getPackageName().isEmpty()) {
+                abort(null, "java.launcher.cls.error2", "static",
+                        mainMethod.getDeclaringClass().getName());
+            }
+            if (!isStatic) {
+                try {
+                    Constructor<?> constructor = mainClass.getDeclaredConstructor();
+                    if (Modifier.isPrivate(constructor.getModifiers())) {
+                        abort(null, "java.launcher.cls.error8",
+                                mainMethod.getDeclaringClass().getName());
+                    }
+                } catch (Throwable ex) {
+                    abort(null, "java.launcher.cls.error8",
+                            mainMethod.getDeclaringClass().getName());
+                }
+            }
+            boolean hasArgs = mainMethod.getParameterCount() != 0;
+            mainType = (isStatic ? 0 : MAIN_NONSTATIC) |
+                       (hasArgs ? 0 : MAIN_WITHOUT_ARGS);
+        } catch (Throwable throwable) {
             if (mainClass.getModule().isNamed()) {
-                abort(e, "java.launcher.module.error5",
-                      mainClass.getName(), mainClass.getModule().getName(),
-                      e.getClass().getName(), e.getLocalizedMessage());
+                abort(throwable, "java.launcher.module.error5",
+                        mainClass.getName(), mainClass.getModule().getName(),
+                        throwable.getClass().getName(),
+                        throwable.getLocalizedMessage());
             } else {
-                abort(e, "java.launcher.cls.error7", mainClass.getName(),
-                      e.getClass().getName(), e.getLocalizedMessage());
+                abort(throwable, "java.launcher.cls.error7", mainClass.getName(),
+                        throwable.getClass().getName(),
+                        throwable.getLocalizedMessage());
             }
         }
-
-        /*
-         * getMethod (above) will choose the correct method, based
-         * on its name and parameter type, however, we still have to
-         * ensure that the method is static and returns a void.
-         */
-//        int mod = mainMethod.getModifiers();
-//        if (!Modifier.isStatic(mod)) {
-//            abort(null, "java.launcher.cls.error2", "static",
-//                  mainMethod.getDeclaringClass().getName());
-//        }
-//        if (mainMethod.getReturnType() != java.lang.Void.TYPE) {
-//            abort(null, "java.launcher.cls.error3",
-//                  mainMethod.getDeclaringClass().getName());
-//        }
     }
 
     private static final String encprop = "sun.jnu.encoding";
@@ -1008,12 +1003,6 @@ public final class LauncherHelper {
         }
         public String toString() {
             return "StdArg{" + "arg=" + arg + ", needsExpansion=" + needsExpansion + '}';
-        }
-    }
-
-    static final class MainHelper {
-        public static void main(String[] args) throws Throwable {
-            mainMethod.invoke(args);
         }
     }
 

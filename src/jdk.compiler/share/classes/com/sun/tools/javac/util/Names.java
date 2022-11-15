@@ -111,7 +111,7 @@ public class Names {
     public final Name java_lang_Cloneable;
     public final Name java_lang_Enum;
     public final Name java_lang_Object;
-    public final Name java_lang_ImportStatic;
+    public final Name java_lang_IO;
 
     // names of builtin classes
     public final Name Array;
@@ -191,6 +191,7 @@ public class Names {
     public final Name module_info;
     public final Name package_info;
     public final Name requireNonNull;
+    public final Name main;
 
     // lambda-related
     public final Name lambda;
@@ -294,7 +295,7 @@ public class Names {
         java_lang_Cloneable = fromString("java.lang.Cloneable");
         java_lang_Enum = fromString("java.lang.Enum");
         java_lang_Object = fromString("java.lang.Object");
-        java_lang_ImportStatic = fromString("java.lang.ImportStatic");
+        java_lang_IO = fromString("java.lang.IO");
 
         // names of builtin classes
         Array = fromString("Array");
@@ -374,6 +375,7 @@ public class Names {
         module_info = fromString("module-info");
         package_info = fromString("package-info");
         requireNonNull = fromString("requireNonNull");
+        main = fromString("main");
 
         //lambda-related
         lambda = fromString("lambda$");
