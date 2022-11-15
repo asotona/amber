@@ -134,7 +134,7 @@ public class Main {
         } catch (Fault f) {
             System.err.println(f.getMessage());
             System.exit(1);
-        } catch (InvocationTargetException | InstantiationException e) {
+        } catch (InvocationTargetException e) {
             // leave VM to handle the stacktrace, in the standard manner
             throw e.getCause();
         }
@@ -196,8 +196,7 @@ public class Main {
      * @throws Fault if a problem is detected before the main method can be executed
      * @throws InvocationTargetException if the main method throws an exception
      */
-    public void run(String[] runtimeArgs, String[] args) throws Fault, InvocationTargetException,
-            InstantiationException {
+    public void run(String[] runtimeArgs, String[] args) throws Fault, InvocationTargetException {
         Path file = getFile(args);
 
         Context context = new Context(file.toAbsolutePath());
@@ -440,7 +439,7 @@ public class Main {
      * @throws InvocationTargetException if the {@code main} method throws an exception
      */
     private void execute(String mainClassName, String[] appArgs, Context context)
-            throws Fault, InvocationTargetException, InstantiationException {
+            throws Fault, InvocationTargetException {
         System.setProperty("jdk.launcher.sourcefile", context.file.toString());
         ClassLoader cl = context.getClassLoader(ClassLoader.getSystemClassLoader());
         try {
