@@ -377,7 +377,7 @@ public class TypeEnter implements Completer {
                     };
                     for (Name pkg : packages) {
                         PackageSymbol pkgSym = syms.enterPackage(syms.java_base, pkg);
-                        if (pkgSym.exists() && !pkgSym.members().isEmpty()) {
+                        if (pkgSym.exists() || !pkgSym.members().isEmpty()) {
                             env.toplevel.autoImportScope.importAll(types, pkgSym.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(pkgSym), false), cfHandler);
                         }
                     }
