@@ -122,6 +122,15 @@ public class Names {
     public final Name java;
     public final Name java_lang;
     public final Name jdk_internal_javac;
+    public final Name java_io;
+    public final Name java_math;
+    public final Name java_net;
+    public final Name java_nio_file;
+    public final Name java_util;
+    public final Name java_util_concurrent;
+    public final Name java_util_function;
+    public final Name java_util_regexp;
+    public final Name java_util_stream;
 
     // module names
     public final Name java_base;
@@ -306,6 +315,15 @@ public class Names {
         java = fromString("java");
         java_lang = fromString("java.lang");
         jdk_internal_javac = fromString("jdk.internal.javac");
+        java_io = fromString("java.io");
+        java_math = fromString("java.math");
+        java_net = fromString("java.net");
+        java_nio_file = fromString("java.nio.file");
+        java_util = fromString("java.util");
+        java_util_concurrent = fromString("java.util.concurrent");
+        java_util_function = fromString("java.util.function");
+        java_util_regexp = fromString("java.util.regexp");
+        java_util_stream = fromString("java.util.stream");
 
         // module names
         java_base = fromString("java.base");
