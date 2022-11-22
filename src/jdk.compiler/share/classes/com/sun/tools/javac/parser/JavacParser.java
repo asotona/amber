@@ -188,7 +188,6 @@ public class JavacParser implements Parser {
         this.allowYieldStatement = Feature.SWITCH_EXPRESSION.allowedInSource(source);
         this.allowRecords = Feature.RECORDS.allowedInSource(source);
         this.allowSealedTypes = Feature.SEALED_CLASSES.allowedInSource(source);
-        this.allowImplicitClass = Feature.IMPLICIT_CLASS_IN_DEFAULT_PACKAGE.allowedInSource(source);
     }
 
     protected AbstractEndPosTable newEndPosTable(boolean keepEndPositions) {
@@ -229,10 +228,6 @@ public class JavacParser implements Parser {
     /** Switch: are sealed types allowed in this source level?
      */
     boolean allowSealedTypes;
-
-    /** Switch: is implicit class allowed?
-     */
-    boolean allowImplicitClass;
 
     /** The type of the method receiver, as specified by a first "this" parameter.
      */
@@ -3931,7 +3926,7 @@ public class JavacParser implements Parser {
             return interfaceDeclaration(mods, dc);
         } else if (token.kind == ENUM) {
             return enumDeclaration(mods, dc);
-        } else if (!seenPackage && !parseModuleInfo && allowImplicitClass) {
+        } else if (!seenPackage && !parseModuleInfo) {
             return implicitClass(mods, dc);
         } else {
             int pos = token.pos;
@@ -4004,7 +3999,8 @@ public class JavacParser implements Parser {
            }
         }
         JCClassDecl result = toP(F.at(pos).ClassDef(
-            mods, name, List.nil(), null, List.nil(), List.nil(), defs.toList()));
+            F.at(Position.NOPOS).Modifiers(Flags.FINAL| Flags.MANDATED|Flags.UNNAMED_CLASS, List.nil()),
+            name, List.nil(), null, List.nil(), List.nil(), defs.toList()));
         attach(result, dc);
         return result;
     }

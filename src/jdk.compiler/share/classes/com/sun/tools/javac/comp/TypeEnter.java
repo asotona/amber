@@ -357,28 +357,30 @@ public class TypeEnter implements Completer {
                     }
                     env.toplevel.autoImportScope.importAll(types, javaLang.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(javaLang), false), cfHandler);
 
-                    // Import-on-demand java.lang.IO
-                    ClassSymbol importIO = syms.getClass(syms.java_base, names.java_lang_IO);
-                    if (importIO != null && !importIO.members().isEmpty()) {
-                        env.toplevel.autoImportScope.importAll(types, importIO.members(), staticImportFilter, make.at(tree.pos()).Import(make.QualIdent(importIO), true), cfHandler);
-                    }
+                    if (tree.defs.stream().filter(t -> t instanceof JCClassDecl d && (d.mods.flags & Flags.UNNAMED_CLASS) != 0).findAny().isPresent()) {
+                        // Import-on-demand java.lang.IO
+                        ClassSymbol importIO = syms.getClass(syms.java_base, names.java_lang_IO);
+                        if (importIO != null && !importIO.members().isEmpty()) {
+                            env.toplevel.autoImportScope.importAll(types, importIO.members(), staticImportFilter, make.at(tree.pos()).Import(make.QualIdent(importIO), true), cfHandler);
+                        }
 
-                    //import more packages
-                    Name[] packages = {
-                        names.java_io,
-                        names.java_math,
-                        names.java_net,
-                        names.java_nio_file,
-                        names.java_util,
-                        names.java_util_concurrent,
-                        names.java_util_function,
-                        names.java_util_regexp,
-                        names.java_util_stream
-                    };
-                    for (Name pkg : packages) {
-                        PackageSymbol pkgSym = syms.enterPackage(syms.java_base, pkg);
-                        if (pkgSym.exists() || !pkgSym.members().isEmpty()) {
-                            env.toplevel.autoImportScope.importAll(types, pkgSym.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(pkgSym), false), cfHandler);
+                        //import more packages
+                        Name[] packages = {
+                            names.java_io,
+                            names.java_math,
+                            names.java_net,
+                            names.java_nio_file,
+                            names.java_util,
+                            names.java_util_concurrent,
+                            names.java_util_function,
+                            names.java_util_regexp,
+                            names.java_util_stream
+                        };
+                        for (Name pkg : packages) {
+                            PackageSymbol pkgSym = syms.enterPackage(syms.java_base, pkg);
+                            if (!pkgSym.members().isEmpty() || pkgSym.exists()) {
+                                env.toplevel.autoImportScope.importAll(types, pkgSym.members(), typeImportFilter, make.at(tree.pos()).Import(make.QualIdent(pkgSym), false), cfHandler);
+                            }
                         }
                     }
                 }
