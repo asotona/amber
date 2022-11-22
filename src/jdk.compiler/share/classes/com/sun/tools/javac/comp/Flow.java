@@ -221,7 +221,9 @@ public class Flow {
     public void analyzeTree(Env<AttrContext> env, TreeMaker make) {
         new AliveAnalyzer().analyzeTree(env, make);
         new AssignAnalyzer().analyzeTree(env, make);
-        new FlowAnalyzer().analyzeTree(env, make);
+        if ((env.enclClass.sym.outermostClass().flags() & Flags.UNNAMED_CLASS) == 0) {
+            new FlowAnalyzer().analyzeTree(env, make);
+        }
         new CaptureAnalyzer().analyzeTree(env, make);
     }
 
