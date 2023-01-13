@@ -448,18 +448,11 @@ public class Enter extends JCTree.Visitor {
 
             ListBuffer<JCTree> topDefs = new ListBuffer<>();
 
-            JCExpression pid = make.QualIdent(syms.staticImportsType.tsym);
-            pid = make.Select(pid, names.asterisk);
-            JCImport imp = make.Import(pid, true);
-            topDefs.append(imp);
-
             ListBuffer<JCTree> defs = new ListBuffer<>();
 
             for (JCTree def : tree.defs) {
                 if (def.hasTag(Tag.PACKAGEDEF)) {
                     log.error(null, Errors.UnnamedClassShouldNotHavePackageDeclaration);
-                } else if (def.hasTag(Tag.IMPORT)) {
-                    topDefs.append(def);
                 } else if (def.hasTag(Tag.METHODDEF)) {
                     defs.append(def);
                 } else {
