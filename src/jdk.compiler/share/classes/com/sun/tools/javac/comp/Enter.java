@@ -461,7 +461,7 @@ public class Enter extends JCTree.Visitor {
             }
 
             JCModifiers unnamedMods = make.at(tree.pos)
-                    .Modifiers(Flags.FINAL| MANDATED|Flags.UNNAMED_CLASS, List.nil());
+                    .Modifiers(Flags.FINAL| MANDATED|Flags.IMPLICIT_CLASS, List.nil());
             JCClassDecl unnamed = make.at(tree.pos).ClassDef(
                     unnamedMods, name, List.nil(), null, List.nil(), List.nil(),
                     defs.toList());
@@ -491,7 +491,7 @@ public class Enter extends JCTree.Visitor {
                 log.error(tree.pos(),
                           Errors.ClassPublicShouldBeInFile(topElement, tree.name));
             }
-            if ((tree.mods.flags & UNNAMED_CLASS) != 0) {
+            if ((tree.mods.flags & IMPLICIT_CLASS) != 0) {
                 syms.removeClass(env.toplevel.modle, tree.name);
             }
         } else {
