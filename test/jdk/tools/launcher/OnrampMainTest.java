@@ -33,11 +33,11 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testStaticMainArgs() throws Exception {
         test("""
-             public class MainClass {
-                public static void main() {
+            class MainClass {
+                static void main() {
                     throw new AssertionError();
                 }
-                public static void main(String[] args) {
+                static void main(String[] args) {
                 }
             }
             """);
@@ -46,11 +46,11 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testStaticMain() throws Exception {
         test("""
-             public class MainClass {
-                public void main(String[] args) {
+            class MainClass {
+                void main(String[] args) {
                     throw new AssertionError();
                 }
-                public static void main() {
+                static void main() {
                 }
             }
             """);
@@ -59,11 +59,11 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testMainArgs() throws Exception {
         test("""
-             public class MainClass {
-                public void main() {
+            class MainClass {
+                void main() {
                     throw new AssertionError();
                 }
-                public void main(String[] args) {
+                void main(String[] args) {
                 }
             }
             """);
@@ -72,8 +72,8 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testMain() throws Exception {
         test("""
-             public class MainClass {
-                public void main() {
+            class MainClass {
+                void main() {
                 }
             }
             """);
@@ -82,10 +82,10 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testImplicitStaticMainArgs() throws Exception {
         test("""
-            public static void main() {
+            static void main() {
                 throw new AssertionError();
             }
-            public static void main(String[] args) {
+            static void main(String[] args) {
             }
             """);
     }
@@ -93,10 +93,10 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testImplicitStaticMain() throws Exception {
         test("""
-            public void main(String[] args) {
+            void main(String[] args) {
                 throw new AssertionError();
             }
-            public static void main() {
+            static void main() {
             }
             """);
     }
@@ -104,10 +104,10 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testImplicitMainArgs() throws Exception {
         test("""
-            public void main() {
+            void main() {
                 throw new AssertionError();
             }
-            public void main(String[] args) {
+            void main(String[] args) {
             }
             """);
     }
@@ -115,7 +115,7 @@ public class OnrampMainTest extends TestHelper {
     @Test
     public void testImplicitMain() throws Exception {
         test("""
-            public void main() {
+            void main() {
             }
             """);
     }
